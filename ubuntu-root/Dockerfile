@@ -1,0 +1,157 @@
+# Main build command - minimal and self-contained
+# docker buildx build --build-arg BUILD_THREADS=24 --tag eicdev/ubuntu-root:latest --push .
+
+FROM ubuntu:24.04
+
+# OCI Image Labels - most automatically populated by buildx via BUILDX_GIT_LABELS
+LABEL org.opencontainers.image.authors="Dmitry Romanov <romanov@jlab.org>" \
+      org.opencontainers.image.url="https://github.com/JeffersonLab/tdis" \
+      org.opencontainers.image.documentation="https://github.com/JeffersonLab/tdis/blob/main/README.md" \
+      org.opencontainers.image.vendor="Dmitry Romanov" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.title="EIC Ubuntu Development Environment with ROOT" \
+      org.opencontainers.image.description="Ubuntu-based development container with CERN ROOT, scientific computing libraries, and development tools for EIC software development"
+# - org.opencontainers.image.source (git repository URL)
+# - org.opencontainers.image.revision (git commit hash)
+# - com.docker.image.source.entrypoint (Dockerfile location)
+
+# Legacy labels for compatibility
+LABEL maintainer.name="Dmitry Romanov" \
+      maintainer.email="romanov@jlab.org"
+
+ARG DEBIAN_FRONTEND=noninteractive
+ENV APP_ROOT=/app
+
+## With heredocs for multi-line scripts, we want to fail on error and the print failing line.
+## Ref: https://docs.docker.com/engine/reference/builder/#example-running-a-multi-line-script
+SHELL ["bash", "-ex", "-c"]
+
+
+
+# Install OS dependencies
+# Notes:
+#   - nlohmann-json3-dev omitted: we build nlohmann/json from source (below)
+#     so ROOT and all downstream packages use the same version/ABI namespace.
+#   - libfmt-dev omitted: Ubuntu ships 10.x but PODIO/EIC stack needs fmt 11+;
+#     eic-base builds fmt from source.
+RUN apt-get update &&\
+    apt-get install -y \
+        apt-utils bash binutils ccache clang clang-tidy-18 clang-tools-18 \
+        cmake curl dialog dos2unix dpkg-dev \
+        g++ gcc gdb gfortran git \
+        locales ninja-build sudo tzdata unminimize valgrind \
+        python3-dev python3-jinja2 python3-numpy python3-pip python3-yaml \
+        libavahi-compat-libdnssd-dev libcfitsio-dev libfftw3-dev \
+        libftgl-dev libgl2ps-dev libglew-dev libglu1-mesa-dev \
+        libgraphviz-dev libgsl-dev \
+        libkrb5-dev libldap2-dev liblz4-dev liblzma-dev \
+        libmysqlclient-dev libpcre3-dev \
+        libx11-dev libxext-dev libxft-dev libxml2-dev libxpm-dev \
+        libxxhash-dev libzstd-dev \
+        qtwebengine5-dev \
+        xrootd-client libxrootd-client-dev libxrootd-server-dev &&\
+    apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+
+
+RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
+    dpkg-reconfigure --frontend=noninteractive locales
+
+
+ENV CLICOLOR_FORCE=1      \
+    LANGUAGE=en_US.UTF-8  \
+    LANG=en_US.UTF-8      \
+    LC_ALL=en_US.UTF-8
+
+# Install EDPM v3 and set the top_dir
+RUN python3 -m pip install --user --upgrade --force-reinstall --break-system-packages ruamel.yaml click appdirs
+
+# Set clang as default for both C++ and C compilers
+# ROOT v6-38+ bundled LLVM uses Clang-specific flags (e.g. -Wunguarded-availability-new)
+# that GCC does not understand, so cc must also be clang.
+RUN update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-18 60 && \
+    update-alternatives --install /usr/bin/cc  cc  /usr/bin/clang-18    60
+
+WORKDIR ${APP_ROOT}
+ENV PATH="$PATH:/root/.local/bin"
+
+
+
+# ---------------------------------------------------------------------------#
+#  Build-time arguments & environment                                        #
+# ---------------------------------------------------------------------------#
+ARG BUILD_THREADS=8
+ARG CXX_STANDARD=20
+
+### ---------------------------------------------------------------------- ###
+###          nlohmann/json (header-only, single copy for all images)       ###
+### ---------------------------------------------------------------------- ###
+# Built once here so ROOT, EDM4HEP, ACTS, Algorithms all use the same copy
+# with the same ABI namespace.  ROOT is told -Dbuiltin_nlohmannjson=OFF
+# so it links against this rather than bundling its own version.
+ARG VERSION_NLOHMANN_JSON=v3.11.3
+ENV NLOHMANN_JSON_INS_PATH=${APP_ROOT}/nlohmann-json
+
+RUN set -ex && \
+    git clone --branch ${VERSION_NLOHMANN_JSON} --depth 1 https://github.com/nlohmann/json.git /tmp/nlohmann-json-src && \
+    cmake -S /tmp/nlohmann-json-src -B /tmp/nlohmann-json-build \
+      -DCMAKE_INSTALL_PREFIX="${NLOHMANN_JSON_INS_PATH}" \
+      -DJSON_BuildTests=OFF && \
+    cmake --build /tmp/nlohmann-json-build --target install && \
+    rm -rf /tmp/nlohmann-json-src /tmp/nlohmann-json-build
+
+ENV CMAKE_PREFIX_PATH="${NLOHMANN_JSON_INS_PATH}:${NLOHMANN_JSON_INS_PATH}/share/cmake/nlohmann_json:${CMAKE_PREFIX_PATH}"
+
+
+### ---------------------------------------------------------------------- ###
+###          ROOT build (no EDPM)                                          ###
+### ---------------------------------------------------------------------- ###
+ARG CERN_ROOT_VERSION=v6-38-00
+ENV CERN_ROOT_SRC_PATH=${APP_ROOT}/root-src \
+    CERN_ROOT_BLD_PATH=${APP_ROOT}/root-build \
+    CERN_ROOT_INS_PATH=${APP_ROOT}/root
+
+RUN set -ex && \
+    # 1. Clone CERN ROOT (shallow, specific tag / branch)
+    git clone --branch ${CERN_ROOT_VERSION} --depth 1 https://github.com/root-project/root.git "${CERN_ROOT_SRC_PATH}" && \
+    \
+    # 2. Configure with CMake in out-of-source build dir
+    mkdir -p "${CERN_ROOT_BLD_PATH}" && cd "${CERN_ROOT_BLD_PATH}" && \
+    cmake \
+      -DCMAKE_INSTALL_PREFIX="${CERN_ROOT_INS_PATH}" \
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+      -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
+      -Droot7=ON \
+      -Dgdml=ON \
+      -Dxrootd=ON \
+      -Dmysql=OFF \
+      -Dpythia6=OFF \
+      -Dpythia6_nolink=OFF \
+      -Dpythia8=OFF \
+      -Dhttp=ON \
+      -Dfftw3=ON \
+      -Dfortran=ON \
+      -Dssl=ON \
+      -Dmlp=ON \
+      -Dtmva=ON \
+      -Dbuiltin_nlohmannjson=OFF \
+      -Wno-dev \
+      "${CERN_ROOT_SRC_PATH}" && \
+    \
+    # 3. Build & install
+    cmake --build . --target install -j"${BUILD_THREADS}" && \
+    \
+    # 4. Clean up build tree to slim the image
+    rm -rf "${CERN_ROOT_BLD_PATH}" "${CERN_ROOT_SRC_PATH}"
+
+# Export classic ROOT vars. Why like this? This is the most stable way to make environment variables work in any case
+ENV ROOTSYS=${CERN_ROOT_INS_PATH} \
+    PATH="${CERN_ROOT_INS_PATH}/bin:${PATH}" \
+    LD_LIBRARY_PATH="${CERN_ROOT_INS_PATH}/lib" \
+    DYLD_LIBRARY_PATH="${CERN_ROOT_INS_PATH}/lib" \
+    SHLIB_PATH="${CERN_ROOT_INS_PATH}/lib" \
+    LIBPATH="${CERN_ROOT_INS_PATH}/lib" \
+    PYTHONPATH="${CERN_ROOT_INS_PATH}/lib" \
+    CMAKE_PREFIX_PATH="${CERN_ROOT_INS_PATH}:${CMAKE_PREFIX_PATH}" \
+    JUPYTER_PATH="${CERN_ROOT_INS_PATH}/etc/notebook" \
+    JUPYTER_CONFIG_DIR="${CERN_ROOT_INS_PATH}/etc/notebook" \
+    CLING_STANDARD_PCH=none
