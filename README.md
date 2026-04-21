@@ -1,11 +1,11 @@
 # EIC Dev Containers
 
-> **(!) NOT OFFICIAL AND NOT RECOMMENDED** unless you know what you are doing.
->
-> **What** — Unofficial EIC containers built from clean source with debug symbols enabled.  
-> **Compatibility with EIC** — Partial. Package versions track the official EIC spack environment but are not guaranteed to stay in sync.  
-> **What this is NOT** — A full-featured rewrite of `eic-shell` / `eicweb/eic_xl`. A large portion of the EIC software ecosystem is not installed.  
-> **Why** — To use EIC libraries in IDEs and other tooling without spack complexity. Clone a repo, run cmake, install — modify any step freely. No spack, no environment modules, no magic.
+**(!) NOT OFFICIAL** = not recommended unless you know what you are doing.
+
+**What** — Unofficial EIC containers built from clean source with debug symbols enabled.  
+**Compatibility with EIC** — Partial. Package versions track the official EIC spack environment but are not guaranteed to stay in sync.  
+**What this is NOT** — A full-featured rewrite of `eic-shell` / `eicweb/eic_xl`. Many tools are not installed.  
+**Why** — Easy for IDEs and other tooling (no spack links trickery), easy to plug and customize ANY part of the chain, easy to customize overall. Philosophy: clone+cmake+install one by one. No spack, no software hidden over links in links after links, no hidden layers of configuration that is invoked or not depending on containers flags. 
 
 ---
 
@@ -13,24 +13,22 @@
 
 ```mermaid
 graph TD
-    A["<b>ubuntu:24.04</b>"]
-    B["<b>eicdev/ubuntu-root</b><br/>Clang 18 · CERN ROOT 6.38 · XRootD<br/>cmake · ninja · ccache · gdb · valgrind"]
+    
+    B["<b>eicdev/ubuntu-root</b><br/>Clang 18 · CERN ROOT 6.38 · XRootD<br/>cmake, gdb, ninja... &such"]
     C["<b>eicdev/eic-base</b><br/>fmt · CLHEP · Eigen3 · FastJet · HepMC3<br/>Geant4 · PODIO · EDM4hep · EDM4eic<br/>DD4hep · ACTS · JANA2 · IRT · Algorithms"]
-    D["<b>eicdev/eic-full</b><br/>EPIC detector geometry · EICrecon"]
-    E["<b>eicdev/eic-extra</b><br/>Rucio client · EIC Rucio policy"]
+    D["<b>eicdev/eic-full</b><br/>EPIC(dd4hep) + EICrecon"]
     F["<b>eicdev/meson-structure</b> ⚗️<br/>Experimental — EDPM-based subset"]
 
-    A --> B
+    
     B --> C
     C --> D
-    D --> E
     B -.->|experimental| F
 ```
 
 | Image | Based on | Adds |
 |---|---|---|
 | `eicdev/ubuntu-root` | `ubuntu:24.04` | Clang 18, CERN ROOT 6.38, XRootD, build tools, debug tooling |
-| `eicdev/eic-base` | `ubuntu-root` | Full EIC dependency stack (see [package list](#package-versions)) |
+| `eicdev/eic-base` | `ubuntu-root` | EIC dependency stack (see [package list](#package-versions)) |
 | `eicdev/eic-full` | `eic-base` | EPIC detector geometry, EICrecon reconstruction framework |
 | `eicdev/eic-extra` | `eic-full` | Rucio client + EIC storage policy for data access at JLab |
 | `eicdev/meson-structure` | `ubuntu-root` | Experimental EDPM-based build (not part of main chain) |
@@ -252,27 +250,4 @@ BUILDX_EXPERIMENTAL=1 docker buildx debug --invoke bash build \
 # PowerShell
 $env:BUILDX_EXPERIMENTAL = "1"
 docker buildx debug --invoke bash build --progress=plain -f eic-base/Dockerfile eic-base/
-```
-
----
-
-## Repository layout
-
-```
-eicdev-containers/
-├── build_images.py        Python build script (recommended entry point)
-├── docker-bake.hcl        BuildKit HCL config for docker buildx bake
-├── ubuntu-root/
-│   ├── Dockerfile         Layer 1: Ubuntu 24.04 + Clang 18 + CERN ROOT
-│   └── bashrc             Shell configuration
-├── eic-base/
-│   ├── Dockerfile         Layer 2: Full EIC dependency stack
-│   └── rucio.cfg          Rucio client config (read-only JLab account)
-├── eic-full/
-│   └── Dockerfile         Layer 3: EPIC geometry + EICrecon
-├── eic-extra/
-│   ├── Dockerfile         Layer 4: Rucio client + EIC storage policy
-│   └── rucio.cfg
-└── meson-structure/
-    └── Dockerfile         Experimental: EDPM-based subset (not part of main chain)
 ```
