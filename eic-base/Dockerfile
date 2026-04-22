@@ -333,7 +333,6 @@ ENV LD_LIBRARY_PATH="${EDM4EIC_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          DD4hep build                                                  ###
 ### ---------------------------------------------------------------------- ###
-# spack: dd4hep @1.35 +ddg4 +ddcad +edm4hep +hepmc3 +xercesc
 ARG VERSION_DD4HEP=v01-36
 ENV DD4HEP_SRC_PATH=${APP_ROOT}/dd4hep-src \
     DD4HEP_BLD_PATH=${APP_ROOT}/dd4hep-build \
@@ -713,6 +712,7 @@ ENV PATH="${NPSIM_INS_PATH}/bin:${PATH}" \
 
 # ADD libraries to ROOT_INCLUDE_PATH
 
-ENV ROOT_INCLUDE_PATH=/app/edm4eic/include:/app/edm4hep/include:/app/podio/include$ROOT_INCLUDE_PATH
+
+ENV ROOT_INCLUDE_PATH=/app/edm4eic/include:/app/edm4hep/include:/app/podio/include:$ROOT_INCLUDE_PATH
 
 SHELL ["/bin/bash", "-c"]

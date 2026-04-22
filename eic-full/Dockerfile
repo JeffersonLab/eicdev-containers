@@ -26,7 +26,7 @@ ARG CXX_STANDARD=20
 ### ---------------------------------------------------------------------- ###
 ###          EPIC build (ePIC detector geometry)                            ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_EPIC=main
+ARG VERSION_EPIC="pr/tracking_region_volume"
 ENV EPIC_SRC_PATH=${APP_ROOT}/epic-src \
     EPIC_BLD_PATH=${APP_ROOT}/epic-build \
     EPIC_INS_PATH=${APP_ROOT}/epic
