@@ -511,10 +511,10 @@ ENV JANA_HOME=${JANA2_INS_PATH} \
 
 
 ### ---------------------------------------------------------------------- ###
-###          IRT build                                                     ###
+###          IRT2 build                                                    ###
 ### ---------------------------------------------------------------------- ###
-# spack: irt @1.0.10
-ARG VERSION_IRT=v1.0.10
+# spack: irt @2.1.1  (renamed to IRT2 at major version 2)
+ARG VERSION_IRT=v2.1.1
 ENV IRT_SRC_PATH=${APP_ROOT}/irt-src \
     IRT_BLD_PATH=${APP_ROOT}/irt-build \
     IRT_INS_PATH=${APP_ROOT}/irt
@@ -531,7 +531,7 @@ RUN set -ex && \
     rm -rf "${IRT_BLD_PATH}" "${IRT_SRC_PATH}"
 
 ENV LD_LIBRARY_PATH="${IRT_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
-    CMAKE_PREFIX_PATH="${IRT_INS_PATH}/lib/cmake/IRT:${CMAKE_PREFIX_PATH}"
+    CMAKE_PREFIX_PATH="${IRT_INS_PATH}/lib/cmake/IRT2:${IRT_INS_PATH}/lib/cmake/IRT:${CMAKE_PREFIX_PATH}"
 
 #
 #### ---------------------------------------------------------------------- ###
