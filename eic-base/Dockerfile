@@ -511,10 +511,10 @@ ENV JANA_HOME=${JANA2_INS_PATH} \
 
 
 ### ---------------------------------------------------------------------- ###
-###          IRT2 build                                                    ###
+###          IRT v1 build (legacy package name "IRT")                      ###
 ### ---------------------------------------------------------------------- ###
-# spack: irt @2.1.1  (renamed to IRT2 at major version 2)
-ARG VERSION_IRT=v2.1.1
+# Kept for EICrecon main, which still does find_package(IRT 1.0.x).
+ARG VERSION_IRT=v1.0.10
 ENV IRT_SRC_PATH=${APP_ROOT}/irt-src \
     IRT_BLD_PATH=${APP_ROOT}/irt-build \
     IRT_INS_PATH=${APP_ROOT}/irt
@@ -531,7 +531,35 @@ RUN set -ex && \
     rm -rf "${IRT_BLD_PATH}" "${IRT_SRC_PATH}"
 
 ENV LD_LIBRARY_PATH="${IRT_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
-    CMAKE_PREFIX_PATH="${IRT_INS_PATH}/lib/cmake/IRT2:${IRT_INS_PATH}/lib/cmake/IRT:${CMAKE_PREFIX_PATH}"
+    CMAKE_PREFIX_PATH="${IRT_INS_PATH}/lib/cmake/IRT:${CMAKE_PREFIX_PATH}"
+
+
+### ---------------------------------------------------------------------- ###
+###          IRT v2 build (package renamed to "IRT2")                      ###
+### ---------------------------------------------------------------------- ###
+# spack: irt @2.1.1  (CMake package renamed to IRT2 at major version 2)
+# Required by epic geometry; installed side-by-side with v1 so both
+# find_package(IRT) and find_package(IRT2) consumers work.
+ARG VERSION_IRT2=v2.1.1
+ENV IRT2_SRC_PATH=${APP_ROOT}/irt2-src \
+    IRT2_BLD_PATH=${APP_ROOT}/irt2-build \
+    IRT2_INS_PATH=${APP_ROOT}/irt2
+
+RUN set -ex && \
+    git clone --branch ${VERSION_IRT2} --depth 1 https://github.com/eic/irt.git "${IRT2_SRC_PATH}" && \
+    mkdir -p "${IRT2_BLD_PATH}" && cd "${IRT2_BLD_PATH}" && \
+    cmake \
+      -DCMAKE_INSTALL_PREFIX="${IRT2_INS_PATH}" \
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+      -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
+      "${IRT2_SRC_PATH}" && \
+    cmake --build . --target install -j"${BUILD_THREADS}" && \
+    rm -rf "${IRT2_BLD_PATH}" "${IRT2_SRC_PATH}"
+
+# Note: do NOT prepend ${IRT2_INS_PATH}/lib to LD_LIBRARY_PATH — IRT v1 and v2
+# may ship the same SONAME (libIRT.so), so we rely on CMake-baked RPATH in
+# consumers to load v2, and keep v1 on LD_LIBRARY_PATH as the default.
+ENV CMAKE_PREFIX_PATH="${IRT2_INS_PATH}/lib/cmake/IRT2:${CMAKE_PREFIX_PATH}"
 
 #
 #### ---------------------------------------------------------------------- ###

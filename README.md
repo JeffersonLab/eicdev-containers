@@ -132,7 +132,8 @@ rucio download eic:<dataset>
 | OnnxRuntime | 1.17.0 | Prebuilt CPU-only binary |
 | ACTS | v44.4.0 | |
 | JANA2 | v2.4.3 | |
-| IRT | v1.0.10 | |
+| IRT | v1.0.10 | Installed at `/app/irt`, exports CMake package `IRT` (for EICrecon) |
+| IRT2 | v2.1.1 | Installed at `/app/irt2`, exports CMake package `IRT2` (for epic) |
 | Algorithms | v1.2.0 | |
 | spdlog | v1.17.0 | Built from source for fmt 11 ABI compatibility |
 
