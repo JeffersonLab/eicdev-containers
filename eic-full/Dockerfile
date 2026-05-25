@@ -4,6 +4,7 @@
 #   docker build -t eicdev/eic-full:latest .
 #   docker build -t eicdev/eic-full:latest --build-arg BUILD_THREADS=24 .
 #   docker buildx build --tag eicdev/eic-full:latest --push .
+#   docker buildx build --tag eicdev/eic-full:latest --no-cache --push .
 #
 # Run:
 #   docker run --rm -it --init eicdev/eic-full:latest
@@ -26,7 +27,7 @@ ARG CXX_STANDARD=20
 ### ---------------------------------------------------------------------- ###
 ###          EPIC build (ePIC detector geometry)                            ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_EPIC="pr/tracking_region_volume"
+ARG VERSION_EPIC="main"
 ENV EPIC_SRC_PATH=${APP_ROOT}/epic-src \
     EPIC_BLD_PATH=${APP_ROOT}/epic-build \
     EPIC_INS_PATH=${APP_ROOT}/epic
