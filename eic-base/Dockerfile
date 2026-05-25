@@ -32,7 +32,7 @@ RUN apt-get update && \
         libocct-data-exchange-dev libocct-draw-dev libocct-foundation-dev \
         libqt5opengl5-dev libspdlog-dev libtbb-dev \
         libxerces-c3-dev libxmu-dev libzmq3-dev \
-        occt-misc python3-pybind11 qtbase5-dev \
+        occt-misc python3-argcomplete python3-pybind11 qtbase5-dev \
         time \
     && apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
     ln -sf /usr/bin/python3 /usr/bin/python
@@ -231,8 +231,8 @@ ENV PATH="${GEANT4_INS_PATH}/bin:${PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          PODIO build                                                   ###
 ### ---------------------------------------------------------------------- ###
-# spack: podio @1.6 cxxstd=20 +datasource +rntuple
-ARG VERSION_PODIO=v01-06
+# spack: podio @1.7 cxxstd=20 +datasource +rntuple
+ARG VERSION_PODIO=v01-07
 ENV PODIO_SRC_PATH=${APP_ROOT}/podio-src \
     PODIO_BLD_PATH=${APP_ROOT}/podio-build \
     PODIO_INS_PATH=${APP_ROOT}/podio
@@ -283,8 +283,8 @@ ENV VGM_DIR=${VGM_INS_PATH} \
 ### ---------------------------------------------------------------------- ###
 ###          EDM4HEP build                                                 ###
 ### ---------------------------------------------------------------------- ###
-# spack: edm4hep @0.99.4 cxxstd=20
-ARG VERSION_EDM4HEP=v00-99-04
+# spack: edm4hep @1.0 cxxstd=20
+ARG VERSION_EDM4HEP=v01-00
 ENV EDM4HEP_SRC_PATH=${APP_ROOT}/edm4hep-src \
     EDM4HEP_BLD_PATH=${APP_ROOT}/edm4hep-build \
     EDM4HEP_INS_PATH=${APP_ROOT}/edm4hep
@@ -308,8 +308,8 @@ ENV LD_LIBRARY_PATH="${EDM4HEP_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          EDM4EIC build                                                 ###
 ### ---------------------------------------------------------------------- ###
-# spack: edm4eic @8.8.0 cxxstd=20
-ARG VERSION_EDM4EIC=v8.8.0
+# spack: edm4eic @8.9.0 cxxstd=20
+ARG VERSION_EDM4EIC=v8.9.0
 ENV EDM4EIC_SRC_PATH=${APP_ROOT}/edm4eic-src \
     EDM4EIC_BLD_PATH=${APP_ROOT}/edm4eic-build \
     EDM4EIC_INS_PATH=${APP_ROOT}/edm4eic
@@ -444,11 +444,11 @@ ENV OnnxRuntime_ROOT=${ONNXRUNTIME_INS_PATH} \
 ### ---------------------------------------------------------------------- ###
 ###          ACTS build                                                    ###
 ### ---------------------------------------------------------------------- ###
-# spack: acts @44.4.0 cxxstd=20
+# spack: acts @45.1.1 cxxstd=20
 #   +dd4hep +edm4hep +examples +fatras +geant4 +json +podio +python +svg +tgeo
 # Note: spack also has +onnx and custom patches (+pr4496 +pr4502 +pr4620)
 #       which are skipped here. ONNX requires onnxruntime built separately.
-ARG VERSION_ACTS=v44.4.0
+ARG VERSION_ACTS=v45.1.1
 ENV ACTS_SRC_PATH=${APP_ROOT}/acts-src \
     ACTS_BLD_PATH=${APP_ROOT}/acts-build \
     ACTS_INS_PATH=${APP_ROOT}/acts
@@ -483,8 +483,8 @@ ENV ACTS_DIR=${ACTS_INS_PATH} \
 ### ---------------------------------------------------------------------- ###
 ###          JANA2 build                                                   ###
 ### ---------------------------------------------------------------------- ###
-# spack: jana2 @2.4.3 +podio +root +zmq
-ARG VERSION_JANA2=v2.4.3
+# spack: jana2 @2026.02.00 +podio +root +zmq
+ARG VERSION_JANA2=v2026.02.00
 ENV JANA2_SRC_PATH=${APP_ROOT}/jana2-src \
     JANA2_BLD_PATH=${APP_ROOT}/jana2-build \
     JANA2_INS_PATH=${APP_ROOT}/jana2
@@ -537,10 +537,10 @@ ENV LD_LIBRARY_PATH="${IRT_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          IRT v2 build (package renamed to "IRT2")                      ###
 ### ---------------------------------------------------------------------- ###
-# spack: irt @2.1.1  (CMake package renamed to IRT2 at major version 2)
+# spack: irt2 @2.1.3  (CMake package renamed to IRT2 at major version 2)
 # Required by epic geometry; installed side-by-side with v1 so both
 # find_package(IRT) and find_package(IRT2) consumers work.
-ARG VERSION_IRT2=v2.1.1
+ARG VERSION_IRT2=v2.1.3
 ENV IRT2_SRC_PATH=${APP_ROOT}/irt2-src \
     IRT2_BLD_PATH=${APP_ROOT}/irt2-build \
     IRT2_INS_PATH=${APP_ROOT}/irt2
@@ -590,9 +590,9 @@ ENV CMAKE_PREFIX_PATH="${IRT2_INS_PATH}/lib/cmake/IRT2:${CMAKE_PREFIX_PATH}"
 ### ---------------------------------------------------------------------- ###
 ###          Algorithms build                                              ###
 ### ---------------------------------------------------------------------- ###
-# spack: algorithms @1.2.0
+# spack: algorithms @1.3.0
 # Requires: libmsgsl-dev (Microsoft GSL) — installed in the OS deps block above.
-ARG VERSION_ALGORITHMS=v1.2.0
+ARG VERSION_ALGORITHMS=v1.3.0
 ENV ALGORITHMS_SRC_PATH=${APP_ROOT}/algorithms-src \
     ALGORITHMS_BLD_PATH=${APP_ROOT}/algorithms-build \
     ALGORITHMS_INS_PATH=${APP_ROOT}/algorithms
@@ -688,11 +688,9 @@ ENV CMAKE_PREFIX_PATH="${SPDLOG_INS_PATH}:${CMAKE_PREFIX_PATH}" \
 #    - py-snakemake-storage-plugin-rucio @0.4.1:  (xl env only)             #
 #                                                                            #
 #  Here we replicate the same set via pip.                                   #
+#  (libkrb5-dev is provided by ubuntu-root; python3-argcomplete is in the    #
+#  eic-base apt block at the top of this file.)                              #
 # ---------------------------------------------------------------------------#
-RUN apt-get update && \
-    apt-get install -y libkrb5-dev python3-argcomplete \
-    && apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
-
 RUN pip3 install --no-cache-dir --break-system-packages \
     "rucio-clients>=37.3.0" \
     "eic-rucio-policy-package" \

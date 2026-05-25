@@ -105,7 +105,7 @@ ENV CMAKE_PREFIX_PATH="${NLOHMANN_JSON_INS_PATH}:${NLOHMANN_JSON_INS_PATH}/share
 ### ---------------------------------------------------------------------- ###
 ###          ROOT build (no EDPM)                                          ###
 ### ---------------------------------------------------------------------- ###
-ARG CERN_ROOT_VERSION=v6-38-00
+ARG CERN_ROOT_VERSION=v6-40-00
 ENV CERN_ROOT_SRC_PATH=${APP_ROOT}/root-src \
     CERN_ROOT_BLD_PATH=${APP_ROOT}/root-build \
     CERN_ROOT_INS_PATH=${APP_ROOT}/root
