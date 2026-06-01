@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Read(//c/dev/geant4-dd4hep-eic-workbench/epic/**)",
-      "Bash(git ls-remote *)"
-    ]
-  }
-}
