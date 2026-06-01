@@ -29,10 +29,9 @@ RUN apt-get update && \
     apt-get install -y \
         libboost-all-dev libexpat-dev \
         libmsgsl-dev \
-        libocct-data-exchange-dev libocct-draw-dev libocct-foundation-dev \
         libqt5opengl5-dev libspdlog-dev libtbb-dev \
         libxerces-c3-dev libxmu-dev libzmq3-dev \
-        occt-misc python3-argcomplete python3-pybind11 qtbase5-dev \
+        python3-argcomplete python3-pybind11 qtbase5-dev \
         time \
     && apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
     ln -sf /usr/bin/python3 /usr/bin/python
@@ -498,7 +497,7 @@ RUN set -ex && \
       -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
       -DUSE_PODIO=ON \
       -DUSE_ROOT=ON \
-      -DUSE_ZMQSERVER=ON \
+      -DUSE_ZEROMQ=ON \
       "${JANA2_SRC_PATH}" && \
     cmake --build . --target install -j"${BUILD_THREADS}" && \
     rm -rf "${JANA2_BLD_PATH}" "${JANA2_SRC_PATH}"
@@ -710,11 +709,47 @@ ENV RUCIO_HOME=/opt/rucio
 
 
 ### ---------------------------------------------------------------------- ###
+###          OpenCASCADE (OCCT) build                                      ###
+###          Ubuntu 24.04 ships OCCT 7.6.3, but npsim's geocad library     ###
+###          uses BRepBuilderAPI_MakeShapeOnMesh, added in OCCT 7.7.       ###
+###          Matches eic spack pin opencascade @7.8.1:.                    ###
+### ---------------------------------------------------------------------- ###
+# spack: opencascade @7.8.1: +application_framework -vtk
+ARG VERSION_OCCT=V7_9_3
+ENV OCCT_SRC_PATH=${APP_ROOT}/occt-src \
+    OCCT_BLD_PATH=${APP_ROOT}/occt-build \
+    OCCT_INS_PATH=${APP_ROOT}/opencascade
+
+RUN set -ex && \
+    git clone --branch ${VERSION_OCCT} --depth 1 \
+        https://github.com/Open-Cascade-SAS/OCCT.git "${OCCT_SRC_PATH}" && \
+    mkdir -p "${OCCT_BLD_PATH}" && cd "${OCCT_BLD_PATH}" && \
+    cmake \
+      -DCMAKE_INSTALL_PREFIX="${OCCT_INS_PATH}" \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DBUILD_LIBRARY_TYPE=Shared \
+      -DBUILD_MODULE_Draw=OFF \
+      -DBUILD_MODULE_Visualization=OFF \
+      -DBUILD_DOC_Overview=OFF \
+      -DUSE_VTK=OFF \
+      -DUSE_FREETYPE=OFF \
+      -DUSE_TK=OFF \
+      "${OCCT_SRC_PATH}" && \
+    cmake --build . --target install -j"${BUILD_THREADS}" && \
+    rm -rf "${OCCT_BLD_PATH}" "${OCCT_SRC_PATH}"
+
+ENV LD_LIBRARY_PATH="${OCCT_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
+    CMAKE_PREFIX_PATH="${OCCT_INS_PATH}:${CMAKE_PREFIX_PATH}"
+
+
+### ---------------------------------------------------------------------- ###
 ###          npsim build (DD4hep-based EIC simulation)                     ###
 ### ---------------------------------------------------------------------- ###
 # spack: npsim @main
-# Requires: dd4hep (+ddg4), fmt, root, spdlog — all already installed above.
-ARG VERSION_NPSIM=main
+# Requires: dd4hep (+ddg4), fmt, root, spdlog, opencascade — all installed
+# above. USE_GEOCAD=ON pulls in npsim's in-tree GeoCad library, which now
+# substitutes for ROOT's removed TGeoToStep and needs OCCT >= 7.7.
+ARG VERSION_NPSIM=smart-tracking-volume
 ENV NPSIM_SRC_PATH=${APP_ROOT}/npsim-src \
     NPSIM_BLD_PATH=${APP_ROOT}/npsim-build \
     NPSIM_INS_PATH=${APP_ROOT}/npsim
@@ -727,7 +762,7 @@ RUN set -ex && \
       -DCMAKE_INSTALL_PREFIX="${NPSIM_INS_PATH}" \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo \
       -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
-      -DUSE_GEOCAD=OFF \
+      -DUSE_GEOCAD=ON \
       "${NPSIM_SRC_PATH}" && \
     cmake --build . --target install -j"${BUILD_THREADS}" && \
     rm -rf "${NPSIM_BLD_PATH}" "${NPSIM_SRC_PATH}"

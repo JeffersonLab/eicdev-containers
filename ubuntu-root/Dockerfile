@@ -43,7 +43,7 @@ RUN apt-get update &&\
         python3-dev python3-jinja2 python3-numpy python3-pip python3-yaml \
         libavahi-compat-libdnssd-dev libcfitsio-dev libfftw3-dev \
         libftgl-dev libgl2ps-dev libglew-dev libglu1-mesa-dev \
-        libgraphviz-dev libgsl-dev \
+        libgif-dev libgraphviz-dev libgsl-dev libjpeg-dev \
         libkrb5-dev libldap2-dev liblz4-dev liblzma-dev \
         libmysqlclient-dev libpcre3-dev \
         libx11-dev libxext-dev libxft-dev libxml2-dev libxpm-dev \
@@ -105,7 +105,7 @@ ENV CMAKE_PREFIX_PATH="${NLOHMANN_JSON_INS_PATH}:${NLOHMANN_JSON_INS_PATH}/share
 ### ---------------------------------------------------------------------- ###
 ###          ROOT build (no EDPM)                                          ###
 ### ---------------------------------------------------------------------- ###
-ARG CERN_ROOT_VERSION=v6-40-00
+ARG CERN_ROOT_VERSION=v6-38-00
 ENV CERN_ROOT_SRC_PATH=${APP_ROOT}/root-src \
     CERN_ROOT_BLD_PATH=${APP_ROOT}/root-build \
     CERN_ROOT_INS_PATH=${APP_ROOT}/root
