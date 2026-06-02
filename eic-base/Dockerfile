@@ -774,7 +774,7 @@ ENV PATH="${NPSIM_INS_PATH}/bin:${PATH}" \
 # ADD libraries to ROOT_INCLUDE_PATH
 
 
-ENV ROOT_INCLUDE_PATH=/app/edm4eic/include:/app/edm4hep/include:/app/podio/include:$ROOT_INCLUDE_PATH
+ENV ROOT_INCLUDE_PATH=/app/edm4eic/include:/app/edm4hep/include:/app/podio/include:${HEPMC3_INS_PATH}/include:$ROOT_INCLUDE_PATH
 
 
 ### ---------------------------------------------------------------------- ###
