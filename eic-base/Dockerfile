@@ -776,4 +776,27 @@ ENV PATH="${NPSIM_INS_PATH}/bin:${PATH}" \
 
 ENV ROOT_INCLUDE_PATH=/app/edm4eic/include:/app/edm4hep/include:/app/podio/include:$ROOT_INCLUDE_PATH
 
+
+### ---------------------------------------------------------------------- ###
+###          HEPMC_Merger build (SignalBackgroundMerger)                   ###
+### ---------------------------------------------------------------------- ###
+# Standalone signal/background HepMC event merger.
+# Requires: hepmc3, root — both installed above.
+ARG VERSION_HEPMC_MERGER=main
+ENV HEPMC_MERGER_SRC_PATH=${APP_ROOT}/hepmc_merger-src \
+    HEPMC_MERGER_BLD_PATH=${APP_ROOT}/hepmc_merger-build \
+    HEPMC_MERGER_INS_PATH=${APP_ROOT}/hepmc_merger
+
+RUN set -ex && \
+    git clone --branch ${VERSION_HEPMC_MERGER} --depth 1 https://github.com/eic/HEPMC_Merger.git "${HEPMC_MERGER_SRC_PATH}" && \
+    mkdir -p "${HEPMC_MERGER_BLD_PATH}" && cd "${HEPMC_MERGER_BLD_PATH}" && \
+    cmake \
+      -DCMAKE_INSTALL_PREFIX="${HEPMC_MERGER_INS_PATH}" \
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+      "${HEPMC_MERGER_SRC_PATH}" && \
+    cmake --build . --target install -j"${BUILD_THREADS}" && \
+    rm -rf "${HEPMC_MERGER_BLD_PATH}" "${HEPMC_MERGER_SRC_PATH}"
+
+ENV PATH="${HEPMC_MERGER_INS_PATH}/bin:${PATH}"
+
 SHELL ["/bin/bash", "-c"]
