@@ -693,7 +693,8 @@ ENV CMAKE_PREFIX_PATH="${SPDLOG_INS_PATH}:${CMAKE_PREFIX_PATH}" \
 RUN pip3 install --no-cache-dir --break-system-packages \
     "rucio-clients>=37.3.0" \
     "eic-rucio-policy-package" \
-    "snakemake-storage-plugin-rucio>=0.4.1"
+    "snakemake-storage-plugin-rucio>=0.4.1" \
+    "click"
 
 # ---------------------------------------------------------------------------#
 #  Rucio configuration                                                       #
