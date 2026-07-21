@@ -36,7 +36,7 @@ variable "IMAGE_TAG" {
 //  Shared build args
 // ---------------------------------------------------------------------
 group "default" {
-  targets = ["ubuntu-root", "eic-base", "eic-full", "eic-extra"]
+  targets = ["ubuntu-root", "eic-base", "eic-full", "eic-extra", "eic-claude"]
 }
 
 target "_common" {
@@ -92,6 +92,19 @@ target "eic-extra" {
   context    = "./eic-extra"
   dockerfile = "Dockerfile"
   tags       = ["eicdev/eic-extra:${IMAGE_TAG}"]
+  contexts = {
+    "eicdev/eic-full:latest" = "target:eic-full"
+  }
+}
+
+// ---------------------------------------------------------------------
+//  Layer 4b: EIC + Claude Code agent (Node.js + Claude Code CLI)
+// ---------------------------------------------------------------------
+target "eic-claude" {
+  inherits   = ["_common"]
+  context    = "./eic-claude"
+  dockerfile = "Dockerfile"
+  tags       = ["eicdev/eic-claude:${IMAGE_TAG}"]
   contexts = {
     "eicdev/eic-full:latest" = "target:eic-full"
   }

@@ -69,8 +69,8 @@ ENV LD_LIBRARY_PATH="${FMT_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          CLHEP build                                                   ###
 ### ---------------------------------------------------------------------- ###
-# spack: clhep @2.4.7.1 cxxstd=20
-ARG VERSION_CLHEP=CLHEP_2_4_7_1
+# spack: clhep @2.4.7.2 cxxstd=20
+ARG VERSION_CLHEP=CLHEP_2_4_7_2
 ENV CLHEP_SRC_PATH=${APP_ROOT}/clhep-src \
     CLHEP_BLD_PATH=${APP_ROOT}/clhep-build \
     CLHEP_INS_PATH=${APP_ROOT}/clhep
@@ -192,10 +192,10 @@ ENV HEPMC3_DIR=${HEPMC3_INS_PATH} \
 ### ---------------------------------------------------------------------- ###
 ###          Geant4 build                                                  ###
 ### ---------------------------------------------------------------------- ###
-# spack: geant4 @11.3.2.east cxxstd=20 +threads +gdml +qt +x11
+# spack: geant4 @11.4.1.east cxxstd=20 +threads +gdml +qt +x11
 # Note: spack uses a custom EIC-patched version (11.3.2.east); we use the
 #       official upstream tag v11.3.2.
-ARG VERSION_GEANT4=v11.3.2
+ARG VERSION_GEANT4=v11.4.1
 ENV GEANT4_SRC_PATH=${APP_ROOT}/geant4-src \
     GEANT4_BLD_PATH=${APP_ROOT}/geant4-build \
     GEANT4_INS_PATH=${APP_ROOT}/geant4
@@ -332,7 +332,7 @@ ENV LD_LIBRARY_PATH="${EDM4EIC_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          DD4hep build                                                  ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_DD4HEP=v01-36
+ARG VERSION_DD4HEP=v01-37
 ENV DD4HEP_SRC_PATH=${APP_ROOT}/dd4hep-src \
     DD4HEP_BLD_PATH=${APP_ROOT}/dd4hep-build \
     DD4HEP_INS_PATH=${APP_ROOT}/dd4hep
@@ -443,11 +443,11 @@ ENV OnnxRuntime_ROOT=${ONNXRUNTIME_INS_PATH} \
 ### ---------------------------------------------------------------------- ###
 ###          ACTS build                                                    ###
 ### ---------------------------------------------------------------------- ###
-# spack: acts @45.1.1 cxxstd=20
+# spack: acts @45.3.0 cxxstd=20
 #   +dd4hep +edm4hep +examples +fatras +geant4 +json +podio +python +svg +tgeo
 # Note: spack also has +onnx and custom patches (+pr4496 +pr4502 +pr4620)
 #       which are skipped here. ONNX requires onnxruntime built separately.
-ARG VERSION_ACTS=v45.1.1
+ARG VERSION_ACTS=v45.3.0
 ENV ACTS_SRC_PATH=${APP_ROOT}/acts-src \
     ACTS_BLD_PATH=${APP_ROOT}/acts-build \
     ACTS_INS_PATH=${APP_ROOT}/acts

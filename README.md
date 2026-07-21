@@ -17,11 +17,13 @@ graph TD
     B["<b>eicdev/ubuntu-root</b><br/>Clang 18 · CERN ROOT 6.38 · XRootD<br/>cmake, gdb, ninja... &such"]
     C["<b>eicdev/eic-base</b><br/>fmt · CLHEP · Eigen3 · FastJet · HepMC3<br/>Geant4 · PODIO · EDM4hep · EDM4eic<br/>DD4hep · ACTS · JANA2 · IRT · Algorithms"]
     D["<b>eicdev/eic-full</b><br/>EPIC(dd4hep) + EICrecon"]
+    E["<b>eicdev/eic-claude</b> 🤖<br/>Node.js + Claude Code agent<br/>semi-auto / autonomous"]
     F["<b>eicdev/meson-structure</b> ⚗️<br/>Experimental — EDPM-based subset"]
 
     
     B --> C
     C --> D
+    D --> E
     B -.->|experimental| F
 ```
 
@@ -31,6 +33,7 @@ graph TD
 | `eicdev/eic-base` | `ubuntu-root` | EIC dependency stack (see [package list](#package-versions)) |
 | `eicdev/eic-full` | `eic-base` | EPIC detector geometry, EICrecon reconstruction framework |
 | `eicdev/eic-extra` | `eic-full` | Rucio client + EIC storage policy for data access at JLab |
+| `eicdev/eic-claude` | `eic-full` | Node.js + Claude Code CLI, pre-configured for semi-automatic / autonomous agent runs |
 | `eicdev/meson-structure` | `ubuntu-root` | Experimental EDPM-based build (not part of main chain) |
 
 ---
@@ -55,6 +58,10 @@ docker run --rm -it eicdev/eic-full:latest
 # With Rucio data access (JLab storage)
 docker pull eicdev/eic-extra:latest
 docker run --rm -it eicdev/eic-extra:latest
+
+# With the Claude Code agent (full stack + Node.js + Claude Code CLI)
+docker pull eicdev/eic-claude:latest
+docker run --rm -it -e ANTHROPIC_API_KEY=sk-ant-... eicdev/eic-claude:latest claude
 ```
 
 ### Mount your source tree
@@ -106,6 +113,36 @@ The `eic-extra` image includes a pre-configured Rucio client pointed at `rucio-s
 rucio list-dids eic:*
 rucio download eic:<dataset>
 ```
+
+### Claude Code agent (eic-claude)
+
+The `eic-claude` image adds Node.js and the [Claude Code](https://docs.claude.com/en/docs/claude-code) CLI on top of the full EIC stack, so the agent can build, run, and debug EIC software with the whole toolchain already present. Supply your Anthropic key via `ANTHROPIC_API_KEY` (or mount an existing `~/.claude` login) and mount your source tree at `/work`.
+
+```bash
+# Interactive agent session
+docker run --rm -it --init \
+  -e ANTHROPIC_API_KEY=sk-ant-... \
+  -v "$PWD":/work -w /work \
+  eicdev/eic-claude:latest claude
+
+# Semi-automatic: edits auto-accepted, shell commands still prompt (the baked-in default)
+docker run --rm -it --init -e ANTHROPIC_API_KEY=sk-ant-... \
+  -v "$PWD":/work -w /work eicdev/eic-claude:latest \
+  claude "fix the failing EICrecon test"
+
+# Fully autonomous / headless: no prompts at all
+docker run --rm --init -e ANTHROPIC_API_KEY=sk-ant-... \
+  -v "$PWD":/work -w /work eicdev/eic-claude:latest \
+  claude -p "build epic and report any errors" --dangerously-skip-permissions
+```
+
+**Agent behaviour is controlled by three things:**
+
+- **`settings.json`** (baked at `/root/.claude/settings.json`) sets `permissions.defaultMode` to `acceptEdits` — the semi-automatic default. Override it by mounting your own settings or passing `--permission-mode`.
+- **`--dangerously-skip-permissions`** on the command line disables all prompts for fully autonomous runs. `IS_SANDBOX=1` is baked into the image so this works while running as root inside the container.
+- **`DISABLE_AUTOUPDATER=1`** pins the CLI to the version baked into the image for reproducible runs.
+
+> ⚠️ Autonomous mode grants the agent unrestricted shell access inside the container. Only use it against source you trust and, ideally, without mounting sensitive host paths.
 
 ---
 
@@ -215,6 +252,7 @@ docker buildx build --tag eicdev/ubuntu-root:latest --build-arg BUILD_THREADS=24
 docker buildx build --tag eicdev/eic-base:latest    --build-arg BUILD_THREADS=24 eic-base/
 docker buildx build --tag eicdev/eic-full:latest    --build-arg BUILD_THREADS=24 eic-full/
 docker buildx build --tag eicdev/eic-extra:latest   --build-arg BUILD_THREADS=24 eic-extra/
+docker buildx build --tag eicdev/eic-claude:latest  --build-arg BUILD_THREADS=24 eic-claude/
 ```
 
 ### Build arguments
