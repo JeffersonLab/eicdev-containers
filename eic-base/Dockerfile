@@ -27,6 +27,7 @@ ARG CXX_STANDARD=20
 # ---------------------------------------------------------------------------#
 RUN apt-get update && \
     apt-get install -y \
+        autoconf automake libtool \
         libboost-all-dev libexpat-dev \
         libmsgsl-dev \
         libqt5opengl5-dev libspdlog-dev libtbb-dev \
@@ -145,12 +146,19 @@ ENV LD_LIBRARY_PATH="${CATCH2_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 ###          FastJet build (autotools)                                      ###
 ### ---------------------------------------------------------------------- ###
 # spack: fastjet @3.5.0 plugins=cxx
+# Source from the GitLab mirror (gitlab.com/fastjet/fastjet) instead of the
+# upstream fastjet.fr tarball, which is a single CERN-hosted host that is
+# frequently unreachable. The git tree ships no generated ./configure, so we
+# bootstrap it with autogen.sh (needs autoconf/automake/libtool from apt above).
+# --recurse-submodules is required: the SISCone plugin lives in a submodule
+# (gitlab.com/fastjet/siscone) and the build fails without it.
 ARG VERSION_FASTJET=3.5.0
 ENV FASTJET_INS_PATH=${APP_ROOT}/fastjet
 
 RUN set -ex && \
-    curl -L "https://fastjet.fr/repo/fastjet-${VERSION_FASTJET}.tar.gz" | tar xz -C "${APP_ROOT}" && \
+    git clone --branch fastjet-${VERSION_FASTJET} --depth 1 --recurse-submodules --shallow-submodules https://gitlab.com/fastjet/fastjet.git "${APP_ROOT}/fastjet-${VERSION_FASTJET}" && \
     cd "${APP_ROOT}/fastjet-${VERSION_FASTJET}" && \
+    NOCONFIGURE=true ./autogen.sh && \
     ./configure --prefix="${FASTJET_INS_PATH}" --enable-allcxxplugins && \
     make -j"${BUILD_THREADS}" && \
     make install && \
@@ -193,8 +201,10 @@ ENV HEPMC3_DIR=${HEPMC3_INS_PATH} \
 ###          Geant4 build                                                  ###
 ### ---------------------------------------------------------------------- ###
 # spack: geant4 @11.4.1.east cxxstd=20 +threads +gdml +qt +x11
-# Note: spack uses a custom EIC-patched version (11.3.2.east); we use the
-#       official upstream tag v11.3.2.
+# Note: spack uses a custom EIC-patched version (11.4.1.east); we use the
+#       official upstream tag v11.4.1.
+# GEANT4_USE_QT_QT5=ON: Geant4 11.4 defaults GEANT4_USE_QT to Qt6, but this
+# image ships Qt5 only (qtbase5-dev, libqt5opengl5-dev), so force Qt5.
 ARG VERSION_GEANT4=v11.4.1
 ENV GEANT4_SRC_PATH=${APP_ROOT}/geant4-src \
     GEANT4_BLD_PATH=${APP_ROOT}/geant4-build \
@@ -216,6 +226,7 @@ RUN set -ex && \
       -DGEANT4_BUILD_MULTITHREADED=ON \
       -DGEANT4_BUILD_TLS_MODEL=global-dynamic \
       -DGEANT4_USE_QT=ON \
+      -DGEANT4_USE_QT_QT5=ON \
       -Wno-dev \
       "${GEANT4_SRC_PATH}" && \
     cmake --build . --target install -j"${BUILD_THREADS}" && \
@@ -307,8 +318,8 @@ ENV LD_LIBRARY_PATH="${EDM4HEP_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          EDM4EIC build                                                 ###
 ### ---------------------------------------------------------------------- ###
-# spack: edm4eic @8.9.0 cxxstd=20
-ARG VERSION_EDM4EIC=v8.9.0
+# spack: edm4eic @8.10.0 cxxstd=20
+ARG VERSION_EDM4EIC=v8.10.0
 ENV EDM4EIC_SRC_PATH=${APP_ROOT}/edm4eic-src \
     EDM4EIC_BLD_PATH=${APP_ROOT}/edm4eic-build \
     EDM4EIC_INS_PATH=${APP_ROOT}/edm4eic
@@ -482,8 +493,8 @@ ENV ACTS_DIR=${ACTS_INS_PATH} \
 ### ---------------------------------------------------------------------- ###
 ###          JANA2 build                                                   ###
 ### ---------------------------------------------------------------------- ###
-# spack: jana2 @2026.02.00 +podio +root +zmq
-ARG VERSION_JANA2=v2026.02.00
+# spack: jana2 @2026.03.00 +podio +root +zmq
+ARG VERSION_JANA2=v2026.03.00
 ENV JANA2_SRC_PATH=${APP_ROOT}/jana2-src \
     JANA2_BLD_PATH=${APP_ROOT}/jana2-build \
     JANA2_INS_PATH=${APP_ROOT}/jana2
@@ -536,10 +547,10 @@ ENV LD_LIBRARY_PATH="${IRT_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          IRT v2 build (package renamed to "IRT2")                      ###
 ### ---------------------------------------------------------------------- ###
-# spack: irt2 @2.1.3  (CMake package renamed to IRT2 at major version 2)
+# spack: irt2 @2.2.0  (CMake package renamed to IRT2 at major version 2)
 # Required by epic geometry; installed side-by-side with v1 so both
 # find_package(IRT) and find_package(IRT2) consumers work.
-ARG VERSION_IRT2=v2.1.3
+ARG VERSION_IRT2=v2.2.0
 ENV IRT2_SRC_PATH=${APP_ROOT}/irt2-src \
     IRT2_BLD_PATH=${APP_ROOT}/irt2-build \
     IRT2_INS_PATH=${APP_ROOT}/irt2
@@ -746,11 +757,13 @@ ENV LD_LIBRARY_PATH="${OCCT_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          npsim build (DD4hep-based EIC simulation)                     ###
 ### ---------------------------------------------------------------------- ###
-# spack: npsim @main
+# spack: npsim @1.6.1
 # Requires: dd4hep (+ddg4), fmt, root, spdlog, opencascade — all installed
 # above. USE_GEOCAD=ON pulls in npsim's in-tree GeoCad library, which now
 # substitutes for ROOT's removed TGeoToStep and needs OCCT >= 7.7.
-ARG VERSION_NPSIM=smart-tracking-volume
+# Was tracking the smart-tracking-volume branch, which has since been merged
+# and deleted upstream; pin the spack-aligned release tag instead.
+ARG VERSION_NPSIM=v1.6.1
 ENV NPSIM_SRC_PATH=${APP_ROOT}/npsim-src \
     NPSIM_BLD_PATH=${APP_ROOT}/npsim-build \
     NPSIM_INS_PATH=${APP_ROOT}/npsim
