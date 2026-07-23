@@ -82,4 +82,50 @@ ENV eicrecon_HOME=${EICRECON_INS_PATH} \
     CMAKE_PREFIX_PATH="${EICRECON_INS_PATH}:${CMAKE_PREFIX_PATH}"
 
 
+### ---------------------------------------------------------------------- ###
+###          ilreco + g4cal (emcal PbWO4 sim/reco, LL-profile production)   ###
+### ---------------------------------------------------------------------- ###
+# Geant4 comes from eic-base (${GEANT4_INS_PATH}); jobs must
+# `source $GEANT4_INS_PATH/bin/geant4.sh` for the dataset env vars.
+ARG VERSION_ILRECO=master
+ENV ILRECO_SRC_PATH=${APP_ROOT}/ilreco-src \
+    ILRECO_BLD_PATH=${APP_ROOT}/ilreco-build \
+    ILRECO_INS_PATH=${APP_ROOT}/ilreco
+
+RUN set -ex && \
+    git clone --branch ${VERSION_ILRECO} --depth 1 https://github.com/emcal/ilreco.git "${ILRECO_SRC_PATH}" && \
+    mkdir -p "${ILRECO_BLD_PATH}" && cd "${ILRECO_BLD_PATH}" && \
+    cmake \
+      -DCMAKE_INSTALL_PREFIX="${ILRECO_INS_PATH}" \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DILRECO_BUILD_TESTS=OFF \
+      "${ILRECO_SRC_PATH}" && \
+    cmake --build . --target install -j"${BUILD_THREADS}" && \
+    rm -rf "${ILRECO_BLD_PATH}" "${ILRECO_SRC_PATH}"
+
+ENV LD_LIBRARY_PATH="${ILRECO_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
+    CMAKE_PREFIX_PATH="${ILRECO_INS_PATH}:${CMAKE_PREFIX_PATH}"
+
+# g4cal: calsim/calreco binaries (finds the ilreco install above) plus the
+# g4cal python package (python3 -m g4cal.llprof fills profile histograms
+# in-job so farm jobs ship compact npz partials instead of raw hits).
+ARG VERSION_G4CAL=main
+ENV G4CAL_SRC_PATH=${APP_ROOT}/g4cal-src \
+    G4CAL_BLD_PATH=${APP_ROOT}/g4cal-build \
+    G4CAL_INS_PATH=${APP_ROOT}/g4cal
+
+RUN set -ex && \
+    git clone --branch ${VERSION_G4CAL} --depth 1 https://github.com/emcal/g4cal.git "${G4CAL_SRC_PATH}" && \
+    mkdir -p "${G4CAL_BLD_PATH}" && cd "${G4CAL_BLD_PATH}" && \
+    cmake \
+      -DCMAKE_INSTALL_PREFIX="${G4CAL_INS_PATH}" \
+      -DCMAKE_BUILD_TYPE=Release \
+      "${G4CAL_SRC_PATH}" && \
+    cmake --build . --target install -j"${BUILD_THREADS}" && \
+    pip3 install --no-cache-dir --break-system-packages "${G4CAL_SRC_PATH}" && \
+    rm -rf "${G4CAL_BLD_PATH}" "${G4CAL_SRC_PATH}"
+
+ENV PATH="${G4CAL_INS_PATH}/bin:${PATH}"
+
+
 SHELL ["/bin/bash", "-c"]
