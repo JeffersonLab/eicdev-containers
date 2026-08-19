@@ -36,7 +36,7 @@ variable "IMAGE_TAG" {
 //  Shared build args
 // ---------------------------------------------------------------------
 group "default" {
-  targets = ["ubuntu-root", "eic-base", "eic-full", "eic-extra", "eic-claude"]
+  targets = ["ubuntu-root", "eic-base", "eic-full", "eic-extra", "eic-claude", "eic-gemini"]
 }
 
 target "_common" {
@@ -105,6 +105,19 @@ target "eic-claude" {
   context    = "./eic-claude"
   dockerfile = "Dockerfile"
   tags       = ["eicdev/eic-claude:${IMAGE_TAG}"]
+  contexts = {
+    "eicdev/eic-full:latest" = "target:eic-full"
+  }
+}
+
+// ---------------------------------------------------------------------
+//  Layer 4c: EIC + Gemini CLI agent (Node.js + Gemini CLI)
+// ---------------------------------------------------------------------
+target "eic-gemini" {
+  inherits   = ["_common"]
+  context    = "./eic-gemini"
+  dockerfile = "Dockerfile"
+  tags       = ["eicdev/eic-gemini:${IMAGE_TAG}"]
   contexts = {
     "eicdev/eic-full:latest" = "target:eic-full"
   }
