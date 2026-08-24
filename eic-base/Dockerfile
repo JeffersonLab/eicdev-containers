@@ -758,13 +758,13 @@ ENV LD_LIBRARY_PATH="${OCCT_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          npsim build (DD4hep-based EIC simulation)                     ###
 ### ---------------------------------------------------------------------- ###
-# spack: npsim @1.6.1
+# spack: npsim @1.8.0
 # Requires: dd4hep (+ddg4), fmt, root, spdlog, opencascade — all installed
 # above. USE_GEOCAD=ON pulls in npsim's in-tree GeoCad library, which now
 # substitutes for ROOT's removed TGeoToStep and needs OCCT >= 7.7.
 # Was tracking the smart-tracking-volume branch, which has since been merged
 # and deleted upstream; pin the spack-aligned release tag instead.
-ARG VERSION_NPSIM=v1.6.1
+ARG VERSION_NPSIM=v1.8.0
 ENV NPSIM_SRC_PATH=${APP_ROOT}/npsim-src \
     NPSIM_BLD_PATH=${APP_ROOT}/npsim-build \
     NPSIM_INS_PATH=${APP_ROOT}/npsim
