@@ -495,7 +495,9 @@ ENV ACTS_DIR=${ACTS_INS_PATH} \
 ###          JANA2 build                                                   ###
 ### ---------------------------------------------------------------------- ###
 # spack: jana2 @2026.03.00 +podio +root +zmq
-ARG VERSION_JANA2=v2026.03.00
+# One patch release ahead of the spack pin (@2026.03.00): 2026.03.01 carries
+# a bug fix we need. Tag verified upstream.
+ARG VERSION_JANA2=v2026.03.01
 ENV JANA2_SRC_PATH=${APP_ROOT}/jana2-src \
     JANA2_BLD_PATH=${APP_ROOT}/jana2-build \
     JANA2_INS_PATH=${APP_ROOT}/jana2
