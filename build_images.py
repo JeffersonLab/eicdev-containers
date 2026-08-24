@@ -72,9 +72,9 @@ IMAGE_CHAIN: OrderedDict[str, dict] = OrderedDict([
         "path": SCRIPT_DIR / "eic-claude",
         "depends_on": "eic-full",
     }),
-    ("eic-gemini", {
+    ("eic-opencode", {
         "org": "eicdev",
-        "path": SCRIPT_DIR / "eic-gemini",
+        "path": SCRIPT_DIR / "eic-opencode",
         "depends_on": "eic-full",
     }),
 ])

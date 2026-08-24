@@ -18,7 +18,7 @@ graph TD
     C["<b>eicdev/eic-base</b><br/>fmt · CLHEP · Eigen3 · FastJet · HepMC3<br/>Geant4 · PODIO · EDM4hep · EDM4eic<br/>DD4hep · ACTS · JANA2 · IRT · Algorithms"]
     D["<b>eicdev/eic-full</b><br/>EPIC(dd4hep) + EICrecon"]
     E["<b>eicdev/eic-claude</b> 🤖<br/>Node.js + Claude Code agent<br/>semi-auto / autonomous"]
-    G["<b>eicdev/eic-gemini</b> ♊<br/>Node.js + Gemini CLI agent<br/>semi-auto / autonomous"]
+    G["<b>eicdev/eic-opencode</b> 🛠️<br/>Node.js + opencode agent<br/>semi-auto / autonomous"]
     F["<b>eicdev/meson-structure</b> ⚗️<br/>Experimental — EDPM-based subset"]
 
     
@@ -36,7 +36,7 @@ graph TD
 | `eicdev/eic-full` | `eic-base` | EPIC detector geometry, EICrecon reconstruction framework |
 | `eicdev/eic-extra` | `eic-full` | Rucio client + EIC storage policy for data access at JLab |
 | `eicdev/eic-claude` | `eic-full` | Node.js + Claude Code CLI, pre-configured for semi-automatic / autonomous agent runs |
-| `eicdev/eic-gemini` | `eic-full` | Node.js + Gemini CLI, pre-configured for semi-automatic / autonomous agent runs |
+| `eicdev/eic-opencode` | `eic-full` | Node.js + opencode (any LLM provider), pre-configured for semi-automatic / autonomous agent runs |
 | `eicdev/meson-structure` | `ubuntu-root` | Experimental EDPM-based build (not part of main chain) |
 
 ---
@@ -66,9 +66,9 @@ docker run --rm -it eicdev/eic-extra:latest
 docker pull eicdev/eic-claude:latest
 docker run --rm -it -e ANTHROPIC_API_KEY=sk-ant-... eicdev/eic-claude:latest claude
 
-# With the Gemini CLI agent (full stack + Node.js + Gemini CLI)
-docker pull eicdev/eic-gemini:latest
-docker run --rm -it -e GEMINI_API_KEY=AIzaSy... eicdev/eic-gemini:latest gemini
+# With the opencode agent (full stack + Node.js + opencode)
+docker pull eicdev/eic-opencode:latest
+docker run --rm -it -e ANTHROPIC_API_KEY=sk-ant-... eicdev/eic-opencode:latest opencode
 ```
 
 ### Mount your source tree
@@ -151,35 +151,39 @@ docker run --rm --init -e ANTHROPIC_API_KEY=sk-ant-... \
 
 > ⚠️ Autonomous mode grants the agent unrestricted shell access inside the container. Only use it against source you trust and, ideally, without mounting sensitive host paths.
 
-### Gemini CLI agent (eic-gemini)
+### opencode agent (eic-opencode)
 
-The `eic-gemini` image adds Node.js and the [@google/gemini-cli](https://github.com/google-gemini/gemini-cli) CLI on top of the full EIC stack, so Gemini can build, run, and debug EIC software with the complete toolchain and Python environment available. Supply your Gemini API key via `GEMINI_API_KEY` (or mount an existing `~/.gemini` directory) and mount your source tree at `/work`.
+The `eic-opencode` image adds Node.js and [opencode](https://github.com/anomalyco/opencode) (npm package `opencode-ai`) on top of the full EIC stack, so the agent can build, run, and debug EIC software with the complete toolchain and Python environment available. Mount your source tree at `/work`.
+
+opencode is provider-agnostic — no model is baked into the image. It picks a provider from whichever API key it finds in the environment (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, …), or from an `auth.json` written by `opencode providers login`. Pin an explicit model with `-m provider/model`.
 
 ```bash
 # Interactive agent session
 docker run --rm -it --init \
-  -e GEMINI_API_KEY=AIzaSy... \
+  -e ANTHROPIC_API_KEY=sk-ant-... \
   -v "$PWD":/work -w /work \
-  eicdev/eic-gemini:latest gemini
+  eicdev/eic-opencode:latest opencode
 
 # Semi-automatic: edits auto-accepted, shell commands still prompt (the baked-in default)
-docker run --rm -it --init -e GEMINI_API_KEY=AIzaSy... \
-  -v "$PWD":/work -w /work eicdev/eic-gemini:latest \
-  gemini -p "fix the failing EICrecon test"
+docker run --rm -it --init -e ANTHROPIC_API_KEY=sk-ant-... \
+  -v "$PWD":/work -w /work eicdev/eic-opencode:latest \
+  opencode run "fix the failing EICrecon test"
 
-# Fully autonomous / headless: YOLO mode (no confirmation prompts)
-docker run --rm --init -e GEMINI_API_KEY=AIzaSy... \
-  -v "$PWD":/work -w /work eicdev/eic-gemini:latest \
-  gemini --yolo -p "build epic and report any errors"
+# Fully autonomous / headless: --auto (no confirmation prompts)
+docker run --rm --init -e ANTHROPIC_API_KEY=sk-ant-... \
+  -v "$PWD":/work -w /work eicdev/eic-opencode:latest \
+  opencode run --auto "build epic and report any errors"
 ```
 
 **Agent behaviour is controlled by:**
 
-- **`settings.json`** (baked at `/root/.gemini/settings.json` and `/etc/gemini-cli/settings.json`) sets `general.defaultApprovalMode` to `auto_edit` — the semi-automatic default.
-- **`--yolo`** (or `--approval-mode=yolo`) on the command line auto-approves all tool executions for fully autonomous runs.
-- **`IS_SANDBOX=1`** is baked into the image.
+- **`opencode.json`** allows `read`/`glob`/`grep`/`list`/`edit`/`webfetch` and leaves `bash` at `ask` — the semi-automatic default. It is baked twice: at `/root/.config/opencode/opencode.json` (the XDG default for root runs) and at `/etc/opencode/opencode.json`, which is what `OPENCODE_CONFIG` points at. The `/etc` copy exists because `/root` is mode 700, so a `--user $(id -u):$(id -g)` run cannot read the copy under `/root`. Override by repointing `OPENCODE_CONFIG`; a project-level `opencode.json` in `/work` also takes precedence.
+- **`--auto`** on the command line auto-approves every permission that is not explicitly denied, for fully autonomous runs.
+- **`OPENCODE_DISABLE_AUTOUPDATE=1`** pins the CLI to the version baked into the image for reproducible runs.
 
-> ⚠️ Autonomous YOLO mode grants the agent unrestricted shell and filesystem access inside the container. Only run against trusted source code.
+> ⚠️ `--auto` grants the agent unrestricted shell and filesystem access inside the container. Only run against trusted source code.
+
+> ℹ️ For non-root runs (`--user $(id -u):$(id -g)`), opencode creates `~/.config/opencode`, `~/.local/share/opencode`, `~/.local/state/opencode` and `~/.cache/opencode` at startup — the whole `$HOME` must be writable, so mount over the home directory itself rather than over a single subdirectory.
 
 ---
 
@@ -290,7 +294,7 @@ docker buildx build --tag eicdev/eic-base:latest    --build-arg BUILD_THREADS=24
 docker buildx build --tag eicdev/eic-full:latest    --build-arg BUILD_THREADS=24 eic-full/
 docker buildx build --tag eicdev/eic-extra:latest   --build-arg BUILD_THREADS=24 eic-extra/
 docker buildx build --tag eicdev/eic-claude:latest  --build-arg BUILD_THREADS=24 eic-claude/
-docker buildx build --tag eicdev/eic-gemini:latest  --build-arg BUILD_THREADS=24 eic-gemini/
+docker buildx build --tag eicdev/eic-opencode:latest --build-arg BUILD_THREADS=24 eic-opencode/
 ```
 
 ### Build arguments

@@ -1,44 +1,54 @@
-# EIC + Gemini CLI agent layer (adds Node.js + Gemini CLI on top of eic-full)
+# EIC + opencode agent layer (adds Node.js + opencode on top of eic-full)
 #
-# Turns the full EIC software stack into an environment where the Gemini CLI
+# Turns the full EIC software stack into an environment where the opencode
 # agent can build, run, and debug EIC software either interactively, in a
-# semi-automatic mode (auto-accept edits, prompt for risky commands), or in a
-# fully autonomous / headless mode (--yolo, no prompts).
+# semi-automatic mode (auto-accept edits, prompt for shell commands), or in a
+# fully autonomous / headless mode (--auto, no prompts).
+#
+# opencode is provider-agnostic: it picks a provider from whichever API key is
+# present in the environment (ANTHROPIC_API_KEY, OPENAI_API_KEY,
+# GEMINI_API_KEY, OPENROUTER_API_KEY, ...), or from an auth.json created by
+# `opencode providers login`.  No default model is baked in; pass
+# `-m provider/model` to pin one.
 #
 # Build:
-#   docker build -t eicdev/eic-gemini:latest .
-#   docker buildx build --tag eicdev/eic-gemini:latest --push .
+#   docker build -t eicdev/eic-opencode:latest .
+#   docker buildx build --tag eicdev/eic-opencode:latest --push .
 #
 # Run — interactive agent (bring your own key):
 #   docker run --rm -it --init \
-#     -e GEMINI_API_KEY=AIzaSy... \
+#     -e ANTHROPIC_API_KEY=sk-ant-... \
 #     -v "$PWD":/work -w /work \
-#     eicdev/eic-gemini:latest gemini
+#     eicdev/eic-opencode:latest opencode
 #
 # Run — semi-automatic (default settings: auto-accept edits, ask before running
 #        shell commands):
-#   docker run --rm -it --init -e GEMINI_API_KEY=AIzaSy... \
-#     -v "$PWD":/work -w /work eicdev/eic-gemini:latest \
-#     gemini -p "fix the failing EICrecon test"
+#   docker run --rm -it --init -e ANTHROPIC_API_KEY=sk-ant-... \
+#     -v "$PWD":/work -w /work eicdev/eic-opencode:latest \
+#     opencode run "fix the failing EICrecon test"
 #
 # Run — fully autonomous / headless (no prompts at all):
-#   docker run --rm --init -e GEMINI_API_KEY=AIzaSy... \
-#     -v "$PWD":/work -w /work eicdev/eic-gemini:latest \
-#     gemini --yolo -p "build epic and report any errors"
+#   docker run --rm --init -e ANTHROPIC_API_KEY=sk-ant-... \
+#     -v "$PWD":/work -w /work eicdev/eic-opencode:latest \
+#     opencode run --auto "build epic and report any errors"
 #
 # Run — autoresearch optimization loop:
 #   docker run --rm -it --init \
 #     --user $(id -u):$(id -g) \
 #     -e HOME=/myhome \
-#     -e GEMINI_CONFIG_DIR=/myhome/.gemini \
-#     -e GEMINI_API_KEY=$GEMINI_API_KEY \
+#     -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
 #     -e UV_CACHE_DIR=/data/autoresearch/uv-cache \
-#     -v ~/.gemini-docker:/myhome/.gemini \
+#     -v ~/.opencode-docker:/myhome \
 #     -v /path/to/data:/data \
 #     -v /path/to/autoresearch-for-you:/work \
 #     -w /work \
-#     eicdev/eic-gemini:latest \
-#     gemini --yolo -p "$(cat /work/optimize.md)"
+#     eicdev/eic-opencode:latest \
+#     opencode run --auto "$(cat /work/optimize.md)"
+#
+#   (opencode creates ~/.config/opencode, ~/.local/share/opencode,
+#    ~/.local/state/opencode and ~/.cache/opencode at startup, so for non-root
+#    runs the WHOLE home must be writable — mount over /myhome, not over a
+#    single subdirectory.)
 
 # uv build stage — declared here so VERSION_UV is in global scope.  Docker
 # forbids variable expansion in `COPY --from=...`, so we pull uv as a named
@@ -52,10 +62,10 @@ FROM eicdev/eic-full:latest
 WORKDIR ${APP_ROOT}
 
 # ---------------------------------------------------------------------------#
-#  Node.js (Gemini CLI runtime dependency)                                   #
+#  Node.js (opencode runtime dependency)                                     #
 #                                                                            #
-#  Gemini CLI needs Node.js 20+.  Ubuntu 24.04 ships an older node in its    #
-#  repos, so we install the current LTS (22.x) from NodeSource.              #
+#  The opencode npm package needs Node.js 20+.  Ubuntu 24.04 ships an older  #
+#  node in its repos, so we install the current LTS (22.x) from NodeSource.  #
 # ---------------------------------------------------------------------------#
 ARG NODE_MAJOR=22
 
@@ -72,17 +82,17 @@ RUN set -ex && \
     apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------------------------------------#
-#  Gemini CLI                                                                #
+#  opencode                                                                   #
 #                                                                            #
 #  Installed globally via npm.  Pin a specific version with                  #
-#  --build-arg VERSION_GEMINI_CLI=0.56.0 for reproducible builds.            #
+#  --build-arg VERSION_OPENCODE=1.18.21 for reproducible builds.             #
 # ---------------------------------------------------------------------------#
-ARG VERSION_GEMINI_CLI=latest
+ARG VERSION_OPENCODE=latest
 
 RUN set -ex && \
-    npm install -g "@google/gemini-cli@${VERSION_GEMINI_CLI}" && \
+    npm install -g "opencode-ai@${VERSION_OPENCODE}" && \
     npm cache clean --force && \
-    gemini --version
+    opencode --version
 
 # ---------------------------------------------------------------------------#
 #  uv (Python package/venv manager used by agent workflows)                  #
@@ -118,19 +128,28 @@ RUN cd /opt/uv-prime && \
 # ---------------------------------------------------------------------------#
 #  Agent configuration                                                        #
 #                                                                            #
-#  settings.json ships a sensible "semi-automatic" default: edits are        #
-#  auto-accepted, but shell commands still prompt.  Autonomous runs override #
-#  this per-invocation with `gemini --yolo` (or `--approval-mode=yolo`).     #
+#  opencode.json ships a sensible "semi-automatic" default: reads, searches   #
+#  and edits are auto-approved, but shell commands still prompt.  Autonomous  #
+#  runs override this per-invocation with `opencode run --auto`.              #
+#                                                                            #
+#  Two copies are baked.  /root/.config/opencode/opencode.json is the XDG      #
+#  default picked up by root runs.  /etc/opencode/opencode.json is the one    #
+#  OPENCODE_CONFIG points at: /root is mode 700, so a `--user $(id -u)` run   #
+#  cannot read the copy under /root, and would otherwise silently lose the    #
+#  baked defaults.  Override OPENCODE_CONFIG to ship a different config.      #
+#                                                                            #
+#  OPENCODE_DISABLE_AUTOUPDATE pins the baked-in CLI version for              #
+#  reproducibility (opencode.json sets the same thing via "autoupdate").      #
 # ---------------------------------------------------------------------------#
-COPY settings.json /root/.gemini/settings.json
-COPY settings.json /etc/gemini-cli/settings.json
+COPY opencode.json /root/.config/opencode/opencode.json
+COPY opencode.json /etc/opencode/opencode.json
 
-ENV IS_SANDBOX=1 \
-    GEMINI_CONFIG_DIR=/root/.gemini
+ENV OPENCODE_CONFIG=/etc/opencode/opencode.json \
+    OPENCODE_DISABLE_AUTOUPDATE=1
 
 # Non-interactive git identity so autonomous commits do not fail.
-RUN git config --global user.name  "EIC Gemini Agent" && \
-    git config --global user.email "eic-gemini@localhost" && \
+RUN git config --global user.name  "EIC OpenCode Agent" && \
+    git config --global user.email "eic-opencode@localhost" && \
     git config --global init.defaultBranch main && \
     git config --global --add safe.directory '*'
 

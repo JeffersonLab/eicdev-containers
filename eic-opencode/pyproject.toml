@@ -1,7 +1,7 @@
 [project]
 name = "optim"
 version = "0.1.0"
-description = "EIC Gemini agent optimization environment"
+description = "EIC opencode agent optimization environment"
 requires-python = ">=3.12"
 dependencies = [
     "notebook",
