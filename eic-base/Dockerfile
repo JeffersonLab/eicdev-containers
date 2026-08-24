@@ -33,6 +33,7 @@ RUN apt-get update && \
         libqt5opengl5-dev libspdlog-dev libtbb-dev \
         libxerces-c3-dev libxmu-dev libzmq3-dev \
         python3-argcomplete python3-pybind11 qtbase5-dev \
+        python3-pandas python3-numpy python3-scipy python3-matplotlib \
         time \
     && apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
     ln -sf /usr/bin/python3 /usr/bin/python

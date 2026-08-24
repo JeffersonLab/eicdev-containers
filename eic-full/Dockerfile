@@ -114,6 +114,8 @@ ENV G4CAL_SRC_PATH=${APP_ROOT}/g4cal-src \
     G4CAL_BLD_PATH=${APP_ROOT}/g4cal-build \
     G4CAL_INS_PATH=${APP_ROOT}/g4cal
 
+
+
 RUN set -ex && \
     git clone --branch ${VERSION_G4CAL} --depth 1 https://github.com/emcal/g4cal.git "${G4CAL_SRC_PATH}" && \
     mkdir -p "${G4CAL_BLD_PATH}" && cd "${G4CAL_BLD_PATH}" && \
@@ -122,8 +124,15 @@ RUN set -ex && \
       -DCMAKE_BUILD_TYPE=Release \
       "${G4CAL_SRC_PATH}" && \
     cmake --build . --target install -j"${BUILD_THREADS}" && \
-    pip3 install --no-cache-dir --break-system-packages "${G4CAL_SRC_PATH}" && \
-    rm -rf "${G4CAL_BLD_PATH}" "${G4CAL_SRC_PATH}"
+    rm -rf "${G4CAL_BLD_PATH}"
+
+
+RUN apt-get update && \
+apt-get install -y \
+    python3-pandas python3-numpy python3-scipy python3-matplotlib \
+&& apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --no-cache-dir --break-system-packages omegaconf duckdb pyarrow ${G4CAL_SRC_PATH}
 
 ENV PATH="${G4CAL_INS_PATH}/bin:${PATH}"
 
