@@ -1,0 +1,20 @@
+[project]
+name = "dis-autoresearch"
+version = "0.1.0"
+description = "Sullivan-process kinematics from pre-reconstructed ePIC hits: a phase-gated autoresearch loop"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "pyarrow>=15",
+    "polars>=1.0",
+    "omegaconf>=2.3",
+    "torch>=2.15.0",
+    "scikit-learn>=1.9.1",
+    "matplotlib>=3.11.2",
+    "pytest>=9.2.0",
+]
+# torch, scikit-learn and matplotlib are added in Phase 0 item 4 / Phase 1 with `uv add`, so the lock records the versions used.
+
+[tool.uv]
+package = false

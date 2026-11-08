@@ -128,3 +128,29 @@ RUN git config --global user.name  "EIC Claude Agent" && \
     git config --global --add safe.directory '*'
 
 SHELL ["/bin/bash", "-c"]
+
+# ---------------------------------------------------------------------------#
+#  dis-autoresearch training environment                                      #
+#                                                                             #
+#  A ready virtual environment, not only cached wheels, with the exact        #
+#  versions the dis-autoresearch project locks (sroai/dis-autoresearch;       #
+#  pyproject.toml and uv.lock copied into ./dis-autoresearch/): torch 2.15.0  #
+#  built for CUDA 13.2 with kernels for compute capability 7.5 to 12.0 (an    #
+#  A100 is 8.0), numpy, pandas, pyarrow, polars, omegaconf, scikit-learn,     #
+#  matplotlib.  Under Apptainer on the JLab farm the image is read-only, so   #
+#  an environment cannot be created there at run time from the uv cache.     #
+#  The EIC images on /cvmfs cannot serve: eic_xl's torch is CPU-only and      #
+#  eic_cuda's is compiled for compute capability 7.5 only and lacks CUPTI     #
+#  (dis-autoresearch findings F13, F14).                                      #
+#                                                                             #
+#  Use:  $DIS_AUTORESEARCH_PYTHON scripts/300_train.py <config> ...           #
+#  Copy the two files again whenever the project's lock moves.                #
+# ---------------------------------------------------------------------------#
+COPY dis-autoresearch/pyproject.toml dis-autoresearch/uv.lock /opt/dis-autoresearch-env/
+RUN cd /opt/dis-autoresearch-env && \
+    UV_CACHE_DIR=/tmp/uv-dis UV_LINK_MODE=copy UV_PYTHON=/usr/bin/python3 UV_PYTHON_DOWNLOADS=never \
+        uv sync --frozen --no-install-project && \
+    rm -rf /tmp/uv-dis && \
+    chmod -R a+rX /opt/dis-autoresearch-env && \
+    .venv/bin/python -c "import torch, numpy, pandas, pyarrow, omegaconf, polars, sklearn; print('dis-autoresearch env:', torch.__version__, torch.version.cuda, torch.cuda.get_arch_list(), numpy.__version__, pandas.__version__)"
+ENV DIS_AUTORESEARCH_PYTHON=/opt/dis-autoresearch-env/.venv/bin/python
